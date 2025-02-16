@@ -71,30 +71,34 @@ Now you can uninstall previously installed tools.
 function if you want just one connection to the database, consider connection pool for multiple connections.
 
 ```py
+import asyncio
+import os
+
 from asyncmy import connect
 from asyncmy.cursors import DictCursor
-import asyncio
 
 
 async def run():
-    conn = await connect()
+    conn = await connect(user=os.getenv("DB_USER"), password=os.getenv("DB_PASSWORD", ""))
     async with conn.cursor(cursor=DictCursor) as cursor:
-        await cursor.execute("create database if not exists test")
-        await cursor.execute(
-            """CREATE TABLE if not exists test.asyncmy
-    (
-        `id`       int primary key auto_increment,
-        `decimal`  decimal(10, 2),
-        `date`     date,
-        `datetime` datetime,
-        `float`    float,
-        `string`   varchar(200),
-        `tinyint`  tinyint
-    )"""
+        await cursor.execute("CREATE DATABASE IF NOT EXISTS test")
+        await cursor.execute("""
+            """
+CREATE TABLE IF NOT EXISTS test.`asyncmy` (
+    `id`       int primary key AUTO_INCREMENT,
+    `decimal`  decimal(10, 2),
+    `date`     date,
+    `datetime` datetime,
+    `float`    float,
+    `string`   varchar(200),
+    `tinyint`  tinyint
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+            """.strip()
         )
+    await conn.ensure_closed()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     asyncio.run(run())
 ```
 
@@ -114,7 +118,8 @@ async def run():
             await cursor.execute("SELECT 1")
             ret = await cursor.fetchone()
             assert ret == (1,)
-
+    pool.close()
+    await pool.wait_closed()
 
 if __name__ == '__main__':
     asyncio.run(run())
@@ -146,6 +151,8 @@ async def run():
     )
     async for event in stream:
         print(event)
+    await conn.ensure_closed()
+    await ctl_conn.ensure_closed()
 
 
 if __name__ == '__main__':
